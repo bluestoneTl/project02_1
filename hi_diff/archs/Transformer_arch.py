@@ -409,6 +409,9 @@ class Transformer(nn.Module):
         out_enc_level3 = self.encoder_level3(inp_enc_level3, prior_2) 
 
         inp_enc_level4 = self.down3_4(out_enc_level3)        
+        print(f"inp_enc_level4 shape: {inp_enc_level4.shape}")
+        import sys
+        sys.exit("Debugging: Stopped after printing inp_enc_level4 shape.")
         latent = self.latent(inp_enc_level4, prior_3) 
         
         inp_dec_level3 = self.up4_3(latent)
