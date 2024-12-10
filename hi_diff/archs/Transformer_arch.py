@@ -328,10 +328,6 @@ class Transformer(nn.Module):
         if mae_weights_path is not None:
             self.load_mae_weights(mae_weights_path)
 
-        # 调整MAE输出形状以匹配 inp_enc_level4
-        self.mae_to_latent_channels = nn.Conv2d(embed_dim, int(dim * 2**3), kernel_size=1, stride=1, padding=0)
-        self.mae_to_latent_resolution = nn.Upsample(size=(14, 14), mode="bilinear", align_corners=False)
-
         # multi-scale
         self.down_1 = nn.Sequential(
             Rearrange('b n c -> b c n'),
@@ -399,72 +395,69 @@ class Transformer(nn.Module):
         prior_3 = self.down_2(prior_2).flatten(1)
 
         #将下面注释的部分，替换为直接使用MAE的权重
-        inp_enc_level1 = self.patch_embed(inp_img)
-        out_enc_level1 = self.encoder_level1(inp_enc_level1, prior_1)
-        
-        inp_enc_level2 = self.down1_2(out_enc_level1)
-        out_enc_level2 = self.encoder_level2(inp_enc_level2, prior_2)
-
-        inp_enc_level3 = self.down2_3(out_enc_level2)
-        out_enc_level3 = self.encoder_level3(inp_enc_level3, prior_2) 
-
-        inp_enc_level4 = self.down3_4(out_enc_level3)        
-        print(f"inp_enc_level4 shape: {inp_enc_level4.shape}")
-        import sys
-        sys.exit("Debugging: Stopped after printing inp_enc_level4 shape.")
-        latent = self.latent(inp_enc_level4, prior_3) 
-        
-        inp_dec_level3 = self.up4_3(latent)
-        inp_dec_level3 = torch.cat([inp_dec_level3, out_enc_level3], 1)
-        inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
-        out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
-
-        inp_dec_level2 = self.up3_2(out_dec_level3)
-        inp_dec_level2 = torch.cat([inp_dec_level2, out_enc_level2], 1)
-        inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
-        out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
-
-        inp_dec_level1 = self.up2_1(out_dec_level2)
-        inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
-        out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
-        
-        out_dec_level1 = self.refinement(out_dec_level1, prior_1)
-
         # inp_enc_level1 = self.patch_embed(inp_img)
+        # out_enc_level1 = self.encoder_level1(inp_enc_level1, prior_1)
+        
+        # inp_enc_level2 = self.down1_2(out_enc_level1)
+        # out_enc_level2 = self.encoder_level2(inp_enc_level2, prior_2)
 
-        # inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
+        # inp_enc_level3 = self.down2_3(out_enc_level2)
+        # out_enc_level3 = self.encoder_level3(inp_enc_level3, prior_2) 
 
-        # print(f"Input shape to MAE: {inp_enc_level1.shape}")
-        # mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
-        # print(f"Output shape from MAE: {mae_output.shape}")
-
-        # # 从 PatchEmbed 获取实际的高度和宽度
-        # height, width = self.mae_encoder.patch_embed.grid_size  # grid_size 是 PatchEmbed 中计算的实际网格尺寸
-        # num_patches = height * width
-        # assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
-
-        # # 将 MAE 输出调整为 [B, C, H, W]
-        # mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(mae_output.size(0), mae_output.size(2), height, width)
-
-        # # 适配通道和分辨率
-        # mae_output_reshaped = self.mae_to_latent_channels(mae_output_reshaped)
-        # mae_output_reshaped = self.mae_to_latent_resolution(mae_output_reshaped)
-        # print(f"Reshaped MAE Output shape: {mae_output_reshaped.shape}")
-
-        # latent = self.latent(mae_output_reshaped, prior_3) 
-
+        # inp_enc_level4 = self.down3_4(out_enc_level3)        
+        # latent = self.latent(inp_enc_level4, prior_3) 
+        
         # inp_dec_level3 = self.up4_3(latent)
+        # inp_dec_level3 = torch.cat([inp_dec_level3, out_enc_level3], 1)
         # inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
         # out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
 
         # inp_dec_level2 = self.up3_2(out_dec_level3)
+        # inp_dec_level2 = torch.cat([inp_dec_level2, out_enc_level2], 1)
         # inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
         # out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
 
         # inp_dec_level1 = self.up2_1(out_dec_level2)
+        # inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
         # out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
         
         # out_dec_level1 = self.refinement(out_dec_level1, prior_1)
+
+        inp_enc_level1 = self.patch_embed(inp_img)
+
+        inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
+
+        print(f"Input shape to MAE: {inp_enc_level1.shape}")
+        mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
+        print(f"Output shape from MAE: {mae_output.shape}")
+
+        # 从 PatchEmbed 获取实际的高度和宽度
+        height, width = self.mae_encoder.patch_embed.grid_size  # 从 PatchEmbed 获取 grid_size
+        num_patches = height * width
+        assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
+
+        # 调整 MAE 输出形状为 [B, C, H, W]
+        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(mae_output.size(0), mae_output.size(2), height, width)
+
+        # 调整通道数和分辨率以匹配 `inp_enc_level4`
+        mae_output_reshaped = nn.Conv2d(mae_output_reshaped.size(1), 384, kernel_size=1, stride=1, padding=0)(mae_output_reshaped)
+        mae_output_reshaped = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)(mae_output_reshaped)
+        print(f"Reshaped MAE Output shape: {mae_output_reshaped.shape}")
+
+        latent = self.latent(mae_output_reshaped, prior_3) 
+
+        inp_dec_level3 = self.up4_3(latent)
+        inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
+        out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
+
+        inp_dec_level2 = self.up3_2(out_dec_level3)
+        inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
+        out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
+
+        inp_dec_level1 = self.up2_1(out_dec_level2)
+        out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
+        
+        out_dec_level1 = self.refinement(out_dec_level1, prior_1)
 
         #### For Dual-Pixel Defocus Deblurring Task ####
         if self.dual_pixel_task:
