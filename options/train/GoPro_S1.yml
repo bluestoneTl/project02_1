@@ -23,11 +23,18 @@ datasets:
     dataset_enlarge_ratio: 1
     prefetch_mode: ~
 
+    # ### -------------Progressive training--------------------------
+    # mini_batch_sizes: [16,10,8,4,2,2]             # Batch size per gpu   
+    # iters: [20000,20000,20000,20000,20000,200000]
+    # gt_size: 384   # Max patch size for progressive training
+    # gt_sizes: [128,160,192,256,320,384]  # Patch sizes for progressive training.
+    # ### ------------------------------------------------------------
+
     ### -------------Progressive training--------------------------
-    mini_batch_sizes: [16,10,8,4,2,2]             # Batch size per gpu   
-    iters: [20000,20000,20000,20000,20000,200000]
-    gt_size: 384   # Max patch size for progressive training
-    gt_sizes: [128,160,192,256,320,384]  # Patch sizes for progressive training.
+    mini_batch_sizes: [4]             # Batch size per gpu   
+    iters: [20000]
+    gt_size: 224  # Max patch size for progressive training
+    gt_sizes: [224]  # Patch sizes for progressive training.
     ### ------------------------------------------------------------
 
     dataset_enlarge_ratio: 1
