@@ -441,17 +441,24 @@ class Transformer(nn.Module):
 
         # 转换为 4D 张量
         mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(batch_size, embed_dim, height, width)
-        print(f"mae_output_reshaped shape: {mae_output_reshaped.shape}")
 
-        # 将 prior_3 移动到与 mae_output_reshaped 相同的设备
-        prior_3 = prior_3.to(mae_output_reshaped.device)
-        print(f"prior_3 shape: {prior_3.shape}, device: {prior_3.device}")
+        # 调整 mae_output_reshaped 的通道数到 256
+        self.adjust_mae_output = nn.Conv2d(embed_dim, 256, kernel_size=1).to(mae_output_reshaped.device)
+        mae_output_reshaped = self.adjust_mae_output(mae_output_reshaped)
 
-        # 调整 mae_output_reshaped 的通道数以匹配 prior_3
-        if mae_output_reshaped.shape[1] != prior_3.shape[1]:
-            self.adjust_mae_output = nn.Conv2d(embed_dim, prior_3.shape[1], kernel_size=1).to(mae_output_reshaped.device)
-            mae_output_reshaped = self.adjust_mae_output(mae_output_reshaped)
-            print(f"Adjusted mae_output_reshaped shape: {mae_output_reshaped.shape}, device: {mae_output_reshaped.device}")
+        # 将 prior_3 调整到 256
+        self.adjust_prior_3 = nn.Linear(prior_3.shape[-1], 256).to(prior_3.device)
+        prior_3 = self.adjust_prior_3(prior_3)
+
+        # 调整 mae_output_reshaped 和 prior_3 到 384
+        self.adjust_to_384 = nn.Conv2d(256, 384, kernel_size=1).to(mae_output_reshaped.device)
+        mae_output_reshaped = self.adjust_to_384(mae_output_reshaped)
+
+        self.adjust_prior_to_384 = nn.Linear(256, 384).to(prior_3.device)
+        prior_3 = self.adjust_prior_to_384(prior_3)
+
+        print(f"Final mae_output_reshaped shape: {mae_output_reshaped.shape}")
+        print(f"Final prior_3 shape: {prior_3.shape}")
 
 
         latent = self.latent(mae_output_reshaped, prior_3) 
