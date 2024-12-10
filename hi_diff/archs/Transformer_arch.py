@@ -435,13 +435,17 @@ class Transformer(nn.Module):
         mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
         print(f"Output shape from MAE: {mae_output.shape}")
 
-        # 将 MAE 输出调整为与 inp_enc_level4 相匹配的形状
-        batch_size, num_patches, embed_dim = mae_output.shape
-        height = int(math.sqrt(num_patches))
-        width = num_patches // height
-        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(batch_size, embed_dim, height, width)
-        mae_output_reshaped = self.mae_to_latent_channels(mae_output_reshaped)  # 调整通道数
-        mae_output_reshaped = self.mae_to_latent_resolution(mae_output_reshaped)  # 调整空间分辨率
+        # 从 PatchEmbed 获取实际的高度和宽度
+        height, width = self.mae_encoder.patch_embed.grid_size  # grid_size 是 PatchEmbed 中计算的实际网格尺寸
+        num_patches = height * width
+        assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
+
+        # 将 MAE 输出调整为 [B, C, H, W]
+        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(mae_output.size(0), mae_output.size(2), height, width)
+
+        # 适配通道和分辨率
+        mae_output_reshaped = self.mae_to_latent_channels(mae_output_reshaped)
+        mae_output_reshaped = self.mae_to_latent_resolution(mae_output_reshaped)
         print(f"Reshaped MAE Output shape: {mae_output_reshaped.shape}")
 
         latent = self.latent(mae_output_reshaped, prior_3) 
