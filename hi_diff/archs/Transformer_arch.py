@@ -422,6 +422,8 @@ class Transformer(nn.Module):
         print(f"inp_dec_level3 shape after reduce_chan_level3: {inp_dec_level3.shape}")     #【查看形状】
         out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
         print(f"out_dec_level3 shape: {out_dec_level3.shape}")     #【查看形状】
+        import os
+        os._exit(0)
 
         inp_dec_level2 = self.up3_2(out_dec_level3)
         inp_dec_level2 = torch.cat([inp_dec_level2, out_enc_level2], 1)
