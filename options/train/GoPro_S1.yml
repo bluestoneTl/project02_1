@@ -64,7 +64,7 @@ network_g:
   dual_pixel_task: False
   embed_dim: 64
   group: 4 # N=4*4
-  mae_weights_path: ~
+  mae_weights_path: experiments/pretrained_models/checkpoint-999.pth
 
 network_le:
   type: latent_encoder_gelu
