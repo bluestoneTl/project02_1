@@ -13,10 +13,8 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 from basicsr.utils.registry import ARCH_REGISTRY
-#输出当前工作目录
-import os
-print(os.getcwd())
-from mae_encoder import MaskedAutoencoderViT as mae
+import  hi_diff.archs.mae_encoder
+from hi_diff.archs.mae_encoder import MaskedAutoencoderViT as mae
 
 ##########################################################################
 ## Layer Norm
