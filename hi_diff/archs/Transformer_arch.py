@@ -398,6 +398,9 @@ class Transformer(nn.Module):
         print(f"Loaded MAE encoder weights from {mae_weights_path}")
 
     def forward(self, inp_img, prior=None):
+        
+        # 【新增，更改输入图片的大小224x224，符合MAE的输入】
+        inp_img = F.interpolate(inp_img, size=(224, 224), mode='bilinear', align_corners=False)
 
         # multi-scale prior
         prior_1 = prior
