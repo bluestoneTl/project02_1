@@ -13,8 +13,10 @@ from einops import rearrange
 from einops.layers.torch import Rearrange
 
 from basicsr.utils.registry import ARCH_REGISTRY
+
 import  hi_diff.archs.mae_encoder
 from hi_diff.archs.mae_encoder import MaskedAutoencoderViT as mae
+import math
 
 ##########################################################################
 ## Layer Norm
@@ -428,14 +430,18 @@ class Transformer(nn.Module):
         print(f"Input shape to MAE: {inp_enc_level1.shape}")    
         mae_output = self.mae_encoder(inp_enc_level1)
         print(f"Output shape from MAE: {mae_output.shape}")
-        # 【转换 mae_output 为 4D 张量，为了匹配latent的输入,后续可以考虑更好的办法】
-        batch_size, num_patches, embed_dim = mae_output.shape
-        height = width = int(num_patches ** 0.5)  
-        assert height * width == num_patches, f"Num patches ({num_patches}) does not match height*width ({height}*{width})"
 
-        # 重新排列为 [batch_size, embed_dim, height, width]
-        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous()  # [B, C, P]
-        mae_output_reshaped = mae_output_reshaped.view(batch_size, embed_dim, height, width)  # [B, C, H, W]
+        # 动态计算 height 和 width
+        batch_size, num_patches, embed_dim = mae_output.shape
+        height = int(math.sqrt(num_patches))
+        while num_patches % height != 0:
+            height -= 1
+        width = num_patches // height
+        assert height * width == num_patches, f"Cannot resolve height and width for num_patches={num_patches}"
+
+        # 转换为 4D 张量
+        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(batch_size, embed_dim, height, width)
+
 
         latent = self.latent(mae_output_reshaped, prior_3) 
 
