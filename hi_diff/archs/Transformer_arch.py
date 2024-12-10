@@ -418,10 +418,10 @@ class Transformer(nn.Module):
         
         # out_dec_level1 = self.refinement(out_dec_level1, prior_1)
 
-        print("====卷积前形状===")
-        print(f"Input shape to MAE Encoder: {inp_enc_level1.shape}")  # 打印输入形状
+        print("====shape of input to patch_embed=====")
+        print(f"Input shape to patch_embed: {inp_enc_level1.shape}")  # 打印输入形状
         inp_enc_level1 = self.patch_embed(inp_img)
-        print("====输入给MAE前形状===")
+        print("====shape of output from MAE encoder====")
         print(f"Input shape to MAE Encoder: {inp_enc_level1.shape}")  # 打印输入形状
         mae_output = self.mae_encoder(inp_enc_level1)
 
