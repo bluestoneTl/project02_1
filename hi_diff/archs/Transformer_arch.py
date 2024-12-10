@@ -334,7 +334,7 @@ class Transformer(nn.Module):
         self.conv_layer = nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1)  # 卷积层
         self.upsample_layer = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)  # 上采样
 
-        self.channel_increase_layer = nn.Conv2d(int(dim * 2 ** 3), 384, kernel_size=1)  # 新增层用于增加通道数
+        self.channel_increase_layer = nn.Conv2d(192, 384, kernel_size=1)  # 修改为 192 -> 384
 
         # multi-scale
         self.down_1 = nn.Sequential(
@@ -455,8 +455,10 @@ class Transformer(nn.Module):
         print(f"Reshaped MAE Output shape: {mae_output.shape}")
 
         latent = self.latent(mae_output, prior_3)   # [4, 384, 28, 28]
+        print(f"latent shape: {latent.shape}")     #【查看形状】
 
         inp_dec_level3 = self.up4_3(latent)     # [4, 192, 56, 56]
+        print(f"inp_dec_level3 shape after up4_3: {inp_dec_level3.shape}")     #【查看形状】
         inp_dec_level3 = self.channel_increase_layer(inp_dec_level3)  # 
         print(f"inp_dec_level3 shape after channel_increase_layer: {inp_dec_level3.shape}")     #【查看形状】
         inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
