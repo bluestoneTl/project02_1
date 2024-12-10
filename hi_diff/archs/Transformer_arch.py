@@ -329,9 +329,10 @@ class Transformer(nn.Module):
             self.load_mae_weights(mae_weights_path)
 
         # 初始化用于调整MAE输出的层
-        self.linear_layer = nn.Linear(50, 14 * 14)  # 用于调整MAE输出的维度
-        self.conv_layer = nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1)  # 用于卷积调整
-        self.upsample_layer = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)  # 用于上采样
+        self.linear_layer = nn.Linear(50, 14 * 14)  # 调整维度为 14x14
+        self.channel_expand_layer = nn.Conv2d(64, 384, kernel_size=1, stride=1)  # 增加通道数
+        self.conv_layer = nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1)  # 卷积层
+        self.upsample_layer = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)  # 上采样
 
         # multi-scale
         self.down_1 = nn.Sequential(
@@ -437,13 +438,16 @@ class Transformer(nn.Module):
         print(f"Output shape from MAE: {mae_output.shape}")
 
         # 使用线性层调整维度
-        mae_output = mae_output.permute(0, 2, 1)  # 变为 [4, 64, 50]
-        mae_output = self.linear_layer(mae_output)  # 应用线性层
-        mae_output = mae_output.view(mae_output.size(0), -1, 14, 14)  # 变为 [4, 384, 14, 14]
+        mae_output = mae_output.permute(0, 2, 1)  # [4, 64, 50] -> [4, 50, 64]
+        mae_output = self.linear_layer(mae_output)  # 调整为 [4, 196, 64]
+        mae_output = mae_output.view(mae_output.size(0), 64, 14, 14)  # 调整为 [4, 64, 14, 14]
 
-        # 使用卷积层进行处理
-        mae_output = self.conv_layer(mae_output)  # 应用卷积层
-        mae_output = self.upsample_layer(mae_output)  # 上采样
+        # 使用通道扩展层调整通道数
+        mae_output = self.channel_expand_layer(mae_output)  # [4, 64, 14, 14] -> [4, 384, 14, 14]
+
+        # 使用卷积层和上采样
+        mae_output = self.conv_layer(mae_output)  # [4, 384, 14, 14]
+        mae_output = self.upsample_layer(mae_output)  # [4, 384, 28, 28]
         print(f"Reshaped MAE Output shape: {mae_output.shape}")
 
         latent = self.latent(mae_output, prior_3) 
