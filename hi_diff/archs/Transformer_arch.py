@@ -401,72 +401,81 @@ class Transformer(nn.Module):
         prior_3 = self.down_2(prior_2).flatten(1)
 
         #将下面注释的部分，替换为直接使用MAE的权重
-        # inp_enc_level1 = self.patch_embed(inp_img)
-        # out_enc_level1 = self.encoder_level1(inp_enc_level1, prior_1)
-        
-        # inp_enc_level2 = self.down1_2(out_enc_level1)
-        # out_enc_level2 = self.encoder_level2(inp_enc_level2, prior_2)
-
-        # inp_enc_level3 = self.down2_3(out_enc_level2)
-        # out_enc_level3 = self.encoder_level3(inp_enc_level3, prior_2) 
-
-        # inp_enc_level4 = self.down3_4(out_enc_level3)        
-        # latent = self.latent(inp_enc_level4, prior_3) 
-        
-        # inp_dec_level3 = self.up4_3(latent)
-        # inp_dec_level3 = torch.cat([inp_dec_level3, out_enc_level3], 1)
-        # inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
-        # out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
-
-        # inp_dec_level2 = self.up3_2(out_dec_level3)
-        # inp_dec_level2 = torch.cat([inp_dec_level2, out_enc_level2], 1)
-        # inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
-        # out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
-
-        # inp_dec_level1 = self.up2_1(out_dec_level2)
-        # inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
-        # out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
-        
-        # out_dec_level1 = self.refinement(out_dec_level1, prior_1)
-
         inp_enc_level1 = self.patch_embed(inp_img)
+        out_enc_level1 = self.encoder_level1(inp_enc_level1, prior_1)
+        
+        inp_enc_level2 = self.down1_2(out_enc_level1)
+        out_enc_level2 = self.encoder_level2(inp_enc_level2, prior_2)
 
-        inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
+        inp_enc_level3 = self.down2_3(out_enc_level2)
+        out_enc_level3 = self.encoder_level3(inp_enc_level3, prior_2) 
 
-        print(f"Input shape to MAE: {inp_enc_level1.shape}")
-        mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
-        print(f"Output shape from MAE: {mae_output.shape}")
-
-        # 使用线性层调整维度
-        mae_output = mae_output.permute(0, 2, 1)  # [4, 64, 50] -> [4, 50, 64]
-        mae_output = self.linear_layer(mae_output)  # 调整为 [4, 196, 64]
-        mae_output = mae_output.view(mae_output.size(0), 64, 14, 14)  # 调整为 [4, 64, 14, 14]
-
-        # 使用通道扩展层调整通道数
-        mae_output = self.channel_expand_layer(mae_output)  # [4, 64, 14, 14] -> [4, 384, 14, 14]
-
-        # 使用卷积层和上采样
-        mae_output = self.conv_layer(mae_output)  # [4, 384, 14, 14]
-        mae_output = self.upsample_layer(mae_output)  # [4, 384, 28, 28]
-        print(f"Reshaped MAE Output shape: {mae_output.shape}")
-
-        latent = self.latent(mae_output, prior_3) 
-        print(f"Latent shape: {latent.shape}")      #【查看形状】
+        inp_enc_level4 = self.down3_4(out_enc_level3)        
+        latent = self.latent(inp_enc_level4, prior_3) 
+        print(f"Latent shape: {latent.shape}")      # [4, 384, 28, 28]
 
         inp_dec_level3 = self.up4_3(latent)
-        print(f"inp_dec_level3 shape: {inp_dec_level3.shape}")      #【查看形状】
+        print(f"inp_dec_level3 shape: {inp_dec_level3.shape}")      
+        inp_dec_level3 = torch.cat([inp_dec_level3, out_enc_level3], 1)
+        print(f"inp_dec_level3 shape after cat: {inp_dec_level3.shape}")     #【查看形状】
         inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
         print(f"inp_dec_level3 shape after reduce_chan_level3: {inp_dec_level3.shape}")     #【查看形状】
         out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
+        print(f"out_dec_level3 shape: {out_dec_level3.shape}")     #【查看形状】
 
         inp_dec_level2 = self.up3_2(out_dec_level3)
+        inp_dec_level2 = torch.cat([inp_dec_level2, out_enc_level2], 1)
         inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
         out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
 
         inp_dec_level1 = self.up2_1(out_dec_level2)
+        inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
         out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
         
         out_dec_level1 = self.refinement(out_dec_level1, prior_1)
+
+        # ========== 分割线   下面是我修改的代码 ===========
+
+        # inp_enc_level1 = self.patch_embed(inp_img)
+
+        # inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
+
+        # print(f"Input shape to MAE: {inp_enc_level1.shape}")
+        # mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
+        # print(f"Output shape from MAE: {mae_output.shape}")
+
+        # # 使用线性层调整维度
+        # mae_output = mae_output.permute(0, 2, 1)  # [4, 64, 50] -> [4, 50, 64]
+        # mae_output = self.linear_layer(mae_output)  # 调整为 [4, 196, 64]
+        # mae_output = mae_output.view(mae_output.size(0), 64, 14, 14)  # 调整为 [4, 64, 14, 14]
+
+        # # 使用通道扩展层调整通道数
+        # mae_output = self.channel_expand_layer(mae_output)  # [4, 64, 14, 14] -> [4, 384, 14, 14]
+
+        # # 使用卷积层和上采样
+        # mae_output = self.conv_layer(mae_output)  # [4, 384, 14, 14]
+        # mae_output = self.upsample_layer(mae_output)  # [4, 384, 28, 28]
+        # print(f"Reshaped MAE Output shape: {mae_output.shape}")
+
+        # latent = self.latent(mae_output, prior_3) 
+        # print(f"Latent shape: {latent.shape}")      # [4, 384, 28, 28]
+
+        # inp_dec_level3 = self.up4_3(latent)
+        # print(f"inp_dec_level3 shape: {inp_dec_level3.shape}")      # [4, 192, 56, 56]
+        # inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
+        # print(f"inp_dec_level3 shape after reduce_chan_level3: {inp_dec_level3.shape}")     #【查看形状】
+        # out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
+
+        # inp_dec_level2 = self.up3_2(out_dec_level3)
+        # inp_dec_level2 = self.reduce_chan_level2(inp_dec_level2)
+        # out_dec_level2 = self.decoder_level2(inp_dec_level2, prior_2) 
+
+        # inp_dec_level1 = self.up2_1(out_dec_level2)
+        # out_dec_level1 = self.decoder_level1(inp_dec_level1, prior_1)
+        
+        # out_dec_level1 = self.refinement(out_dec_level1, prior_1)
+
+        # ========== 分割线   上面是我修改的代码 ===========
 
         #### For Dual-Pixel Defocus Deblurring Task ####
         if self.dual_pixel_task:
