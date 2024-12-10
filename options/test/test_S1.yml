@@ -1,0 +1,71 @@
+# general settings
+name: test_HI_Diff_GoPro
+model_type: HI_Diff_S1  # 第一阶段推理
+scale: 1
+num_gpu: 1  # 设置为 0 使用 CPU
+manual_seed: 100
+
+# dataset and data loader settings
+datasets:
+  test_1:
+    name: GoPro
+    type: PairedImageIRDataset
+    dataroot_gt: datasets/data_4000_NewName/test/HR
+    dataroot_lq: datasets/data_4000_NewName/test/LQ
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+# network structures
+network_g:
+  type: Transformer
+  inp_channels: 3
+  out_channels: 3
+  dim: 48
+  num_blocks: [3,5,6,6]
+  num_refinement_blocks: 4
+  heads: [1,2,4,8]
+  ffn_expansion_factor: 2.66
+  bias: False
+  LayerNorm_type: WithBias
+  dual_pixel_task: False
+  embed_dim: 64
+  group: 4  # N=4*4
+
+network_le:
+  type: latent_encoder_gelu
+  in_chans: 6
+  embed_dim: 64
+  block_num: 6
+  group: 4
+  stage: 1
+  patch_expansion: 0.5
+  channel_expansion: 4
+
+# path
+path:
+  pretrain_network_g: experiments/train_HI_Diff_GoPro_S1/models/net_g_232000.pth  # 第一阶段 Transformer 模型权重路径
+  param_key_g: params
+  strict_load_g: true
+
+  pretrain_network_le: experiments/train_HI_Diff_GoPro_S1/models/net_le_232000.pth  # 第一阶段 LE 模型权重路径
+  param_key_g: params
+  strict_load_le: true
+
+  resume_state: ~
+
+# validation settings
+val:
+  save_img: True
+  suffix: ''
+  selfensemble_testing: False
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 0
+      test_y_channel: false
+    ssim:
+      type: calculate_ssim
+      crop_border: 0
+      test_y_channel: false
