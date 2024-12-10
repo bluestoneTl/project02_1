@@ -451,9 +451,12 @@ class Transformer(nn.Module):
         print(f"Reshaped MAE Output shape: {mae_output.shape}")
 
         latent = self.latent(mae_output, prior_3) 
+        print(f"Latent shape: {latent.shape}")      #【查看形状】
 
         inp_dec_level3 = self.up4_3(latent)
+        print(f"inp_dec_level3 shape: {inp_dec_level3.shape}")      #【查看形状】
         inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
+        print(f"inp_dec_level3 shape after reduce_chan_level3: {inp_dec_level3.shape}")     #【查看形状】
         out_dec_level3 = self.decoder_level3(inp_dec_level3, prior_2) 
 
         inp_dec_level2 = self.up3_2(out_dec_level3)
