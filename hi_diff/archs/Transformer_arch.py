@@ -342,7 +342,7 @@ class Transformer(nn.Module):
 
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
 
-        # 添加通道缩减层
+        # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
         self.channel_reducer = nn.Conv2d(48, 3, kernel_size=1, stride=1, padding=0, bias=False)
 
         self.encoder_level1 = BasicLayer(dim=dim, num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type, embed_dim=embed_dim, num_blocks=num_blocks[0], group=group)
@@ -421,16 +421,21 @@ class Transformer(nn.Module):
         
         # out_dec_level1 = self.refinement(out_dec_level1, prior_1)
 
-        print("====shape of input to patch_embed=====")
-        print(f"Input shape to patch_embed: {inp_img.shape}")  # 打印输入形状
         inp_enc_level1 = self.patch_embed(inp_img)
-        inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 缩减到 3 通道
 
-        print("====shape of output from MAE encoder====")
-        print(f"Input shape to MAE Encoder: {inp_enc_level1.shape}")  # 打印输入形状
+        inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
+
         mae_output = self.mae_encoder(inp_enc_level1)
 
-        latent = self.latent(mae_output, prior_3) 
+        # 【转换 mae_output 为 4D 张量，为了匹配latent的输入,后续可以考虑更好的办法】
+        batch_size, num_patches, embed_dim = mae_output.shape
+        height = width = int(num_patches ** 0.5)  
+        assert height * width == num_patches, "Num patches does not match height*width"
+        # 重新排列为 [batch_size, embed_dim, height, width]
+        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous()  # [B, C, P]
+        mae_output_reshaped = mae_output_reshaped.view(batch_size, embed_dim, height, width)  # [B, C, H, W]
+
+        latent = self.latent(mae_output_reshaped, prior_3) 
 
         inp_dec_level3 = self.up4_3(latent)
         inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
