@@ -439,9 +439,7 @@ class Transformer(nn.Module):
 
         inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
 
-        print(f"Input shape to MAE: {inp_enc_level1.shape}")
         mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
-        print(f"Output shape from MAE: {mae_output.shape}")
 
         # 使用线性层调整维度
         mae_output = mae_output.permute(0, 2, 1)  # [4, 64, 50] -> [4, 50, 64]
