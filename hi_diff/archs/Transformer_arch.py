@@ -431,20 +431,20 @@ class Transformer(nn.Module):
         mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
         print(f"Output shape from MAE: {mae_output.shape}")
 
-        # 从 PatchEmbed 获取实际的高度和宽度
-        height, width = self.mae_encoder.patch_embed.grid_size  # 从 PatchEmbed 获取 grid_size
-        # num_patches = height * width
-        # assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
+        # 使用线性层调整通道数和维度
+        mae_output = mae_output.permute(0, 2, 1)  # 变为 [4, 64, 50]
+        linear_layer = nn.Linear(50, 14 * 14)  # 将50调整为14*14
+        mae_output = linear_layer(mae_output)
+        mae_output = mae_output.view(mae_output.size(0), -1, 14, 14)  # 变为 [4, 384, 14, 14]
 
-        # 调整 MAE 输出形状为 [B, C, H, W]
-        mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(mae_output.size(0), mae_output.size(2), height, width)
+        # 使用卷积层调整通道数和上采样
+        conv_layer = nn.Conv2d(384, 384, kernel_size=3, stride=1, padding=1)
+        upsample_layer = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)
+        mae_output = conv_layer(mae_output)
+        mae_output = upsample_layer(mae_output)
+        print(f"Reshaped MAE Output shape: {mae_output.shape}")
 
-        # 调整通道数和分辨率以匹配 `inp_enc_level4`
-        mae_output_reshaped = nn.Conv2d(mae_output_reshaped.size(1), 384, kernel_size=1, stride=1, padding=0)(mae_output_reshaped)
-        mae_output_reshaped = nn.Upsample(size=(28, 28), mode="bilinear", align_corners=False)(mae_output_reshaped)
-        print(f"Reshaped MAE Output shape: {mae_output_reshaped.shape}")
-
-        latent = self.latent(mae_output_reshaped, prior_3) 
+        latent = self.latent(mae_output, prior_3) 
 
         inp_dec_level3 = self.up4_3(latent)
         inp_dec_level3 = self.reduce_chan_level3(inp_dec_level3)
