@@ -328,6 +328,10 @@ class Transformer(nn.Module):
         if mae_weights_path is not None:
             self.load_mae_weights(mae_weights_path)
 
+        # 调整MAE输出形状以匹配 inp_enc_level4
+        self.mae_to_latent_channels = nn.Conv2d(embed_dim, int(dim * 2**3), kernel_size=1, stride=1, padding=0)
+        self.mae_to_latent_resolution = nn.Upsample(size=(14, 14), mode="bilinear", align_corners=False)
+
         # multi-scale
         self.down_1 = nn.Sequential(
             Rearrange('b n c -> b c n'),
@@ -427,39 +431,18 @@ class Transformer(nn.Module):
 
         inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
 
-        print(f"Input shape to MAE: {inp_enc_level1.shape}")    
-        mae_output = self.mae_encoder(inp_enc_level1)
+        print(f"Input shape to MAE: {inp_enc_level1.shape}")
+        mae_output = self.mae_encoder(inp_enc_level1)  # [B, P, C]
         print(f"Output shape from MAE: {mae_output.shape}")
 
-        # 动态计算 height 和 width
+        # 将 MAE 输出调整为与 inp_enc_level4 相匹配的形状
         batch_size, num_patches, embed_dim = mae_output.shape
         height = int(math.sqrt(num_patches))
-        while num_patches % height != 0:
-            height -= 1
         width = num_patches // height
-        assert height * width == num_patches, f"Cannot resolve height and width for num_patches={num_patches}"
-
-        # 转换为 4D 张量
         mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(batch_size, embed_dim, height, width)
-
-        # 调整 mae_output_reshaped 的通道数到 256
-        self.adjust_mae_output = nn.Conv2d(embed_dim, 256, kernel_size=1).to(mae_output_reshaped.device)
-        mae_output_reshaped = self.adjust_mae_output(mae_output_reshaped)
-
-        # 将 prior_3 调整到 256
-        self.adjust_prior_3 = nn.Linear(prior_3.shape[-1], 256).to(prior_3.device)
-        prior_3 = self.adjust_prior_3(prior_3)
-
-        # 调整 mae_output_reshaped 和 prior_3 到 384
-        self.adjust_to_384 = nn.Conv2d(256, 384, kernel_size=1).to(mae_output_reshaped.device)
-        mae_output_reshaped = self.adjust_to_384(mae_output_reshaped)
-
-        self.adjust_prior_to_384 = nn.Linear(256, 384).to(prior_3.device)
-        prior_3 = self.adjust_prior_to_384(prior_3)
-
-        print(f"Final mae_output_reshaped shape: {mae_output_reshaped.shape}")
-        print(f"Final prior_3 shape: {prior_3.shape}")
-
+        mae_output_reshaped = self.mae_to_latent_channels(mae_output_reshaped)  # 调整通道数
+        mae_output_reshaped = self.mae_to_latent_resolution(mae_output_reshaped)  # 调整空间分辨率
+        print(f"Reshaped MAE Output shape: {mae_output_reshaped.shape}")
 
         latent = self.latent(mae_output_reshaped, prior_3) 
 
