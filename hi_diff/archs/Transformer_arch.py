@@ -441,16 +441,17 @@ class Transformer(nn.Module):
 
         # 转换为 4D 张量
         mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(batch_size, embed_dim, height, width)
-
-        # 打印 mae_output_reshaped 和 prior_3 的形状
         print(f"mae_output_reshaped shape: {mae_output_reshaped.shape}")
-        print(f"prior_3 shape: {prior_3.shape}")
+
+        # 将 prior_3 移动到与 mae_output_reshaped 相同的设备
+        prior_3 = prior_3.to(mae_output_reshaped.device)
+        print(f"prior_3 shape: {prior_3.shape}, device: {prior_3.device}")
 
         # 调整 mae_output_reshaped 的通道数以匹配 prior_3
         if mae_output_reshaped.shape[1] != prior_3.shape[1]:
-            self.adjust_mae_output = nn.Conv2d(embed_dim, prior_3.shape[1], kernel_size=1)
+            self.adjust_mae_output = nn.Conv2d(embed_dim, prior_3.shape[1], kernel_size=1).to(mae_output_reshaped.device)
             mae_output_reshaped = self.adjust_mae_output(mae_output_reshaped)
-            print(f"Adjusted mae_output_reshaped shape: {mae_output_reshaped.shape}")
+            print(f"Adjusted mae_output_reshaped shape: {mae_output_reshaped.shape}, device: {mae_output_reshaped.device}")
 
 
         latent = self.latent(mae_output_reshaped, prior_3) 
