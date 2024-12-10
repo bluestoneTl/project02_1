@@ -305,7 +305,7 @@ class Transformer(nn.Module):
         bias = False,
         LayerNorm_type = 'WithBias',   ## Other option 'BiasFree'
         dual_pixel_task = False,        ## True for dual-pixel defocus deblurring only. Also set inp_channels=6
-        embed_dim = 48,         # 匹配 MAE encoder的 embed_dim 原来为48  可能改为1024  存疑
+        embed_dim = 48,         # 匹配 MAE encoder的 embed_dim 原来为48  可能改为1024  存疑  ,实际上发现MAE的输入通道为3
         group=4,
         mae_weights_path=None
     ):
@@ -425,12 +425,14 @@ class Transformer(nn.Module):
 
         inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 【缩减到 3 通道, 简单的措施，为了匹配MAE的输入，后续可以考虑更好的办法】
 
+        print(f"Input shape to MAE: {inp_enc_level1.shape}")    
         mae_output = self.mae_encoder(inp_enc_level1)
-
+        print(f"Output shape from MAE: {mae_output.shape}")
         # 【转换 mae_output 为 4D 张量，为了匹配latent的输入,后续可以考虑更好的办法】
         batch_size, num_patches, embed_dim = mae_output.shape
         height = width = int(num_patches ** 0.5)  
-        assert height * width == num_patches, "Num patches does not match height*width"
+        assert height * width == num_patches, f"Num patches ({num_patches}) does not match height*width ({height}*{width})"
+
         # 重新排列为 [batch_size, embed_dim, height, width]
         mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous()  # [B, C, P]
         mae_output_reshaped = mae_output_reshaped.view(batch_size, embed_dim, height, width)  # [B, C, H, W]
