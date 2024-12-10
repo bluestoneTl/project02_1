@@ -342,6 +342,9 @@ class Transformer(nn.Module):
 
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
 
+        # 添加通道缩减层
+        self.channel_reducer = nn.Conv2d(48, 3, kernel_size=1, stride=1, padding=0, bias=False)
+
         self.encoder_level1 = BasicLayer(dim=dim, num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type, embed_dim=embed_dim, num_blocks=num_blocks[0], group=group)
 
         self.down1_2 = Downsample(dim) ## From Level 1 to Level 2
@@ -421,7 +424,8 @@ class Transformer(nn.Module):
         print("====shape of input to patch_embed=====")
         print(f"Input shape to patch_embed: {inp_img.shape}")  # 打印输入形状
         inp_enc_level1 = self.patch_embed(inp_img)
-        
+        inp_enc_level1 = self.channel_reducer(inp_enc_level1)  # 缩减到 3 通道
+
         print("====shape of output from MAE encoder====")
         print(f"Input shape to MAE Encoder: {inp_enc_level1.shape}")  # 打印输入形状
         mae_output = self.mae_encoder(inp_enc_level1)
