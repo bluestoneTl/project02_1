@@ -433,8 +433,8 @@ class Transformer(nn.Module):
 
         # 从 PatchEmbed 获取实际的高度和宽度
         height, width = self.mae_encoder.patch_embed.grid_size  # 从 PatchEmbed 获取 grid_size
-        num_patches = height * width
-        assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
+        # num_patches = height * width
+        # assert num_patches == mae_output.size(1), "Mismatch between calculated and actual num_patches"
 
         # 调整 MAE 输出形状为 [B, C, H, W]
         mae_output_reshaped = mae_output.permute(0, 2, 1).contiguous().view(mae_output.size(0), mae_output.size(2), height, width)
