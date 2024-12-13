@@ -106,6 +106,13 @@ class HI_Diff_S1(BaseModel):
         self.lq = data['lq'].to(self.device)
         if 'gt' in data:
             self.gt = data['gt'].to(self.device)
+        
+         # 【统一调整图像尺寸为 224x224 】 
+        target_height, target_width = 224, 224
+        if self.lq.size(2) != target_height or self.lq.size(3) != target_width:
+            self.lq = F.interpolate(self.lq, size=(target_height, target_width), mode='bilinear', align_corners=False)
+        if hasattr(self, 'gt') and self.gt.size(2) != target_height or self.gt.size(3) != target_width:
+            self.gt = F.interpolate(self.gt, size=(target_height, target_width), mode='bilinear', align_corners=False)
 
     def optimize_parameters(self, current_iter):
         self.optimizer_total.zero_grad()
