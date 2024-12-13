@@ -142,14 +142,14 @@ class HI_Diff_S1(BaseModel):
         window_size = 8
         mod_pad_h, mod_pad_w = 0, 0
         _, _, h, w = self.lq.size()
-        # # 【新增：检查图像高度并调整】
-        # 如果图像尺寸不是224（前向传播中调整后的尺寸），统一调整为224x224
-        if h!= 224 or w!= 224:
-            self.lq = F.interpolate(self.lq, size=(224, 224), mode='bilinear', align_corners=False)
-        if hasattr(self, 'gt'):
-            if h!= 224 or w!= 224:
-                self.gt = F.interpolate(self.gt, size=(224, 224), mode='bilinear', align_corners=False)
-        # # 【新增：检查图像高度并调整】
+        # # # 【新增：检查图像高度并调整】
+        # # 如果图像尺寸不是224（前向传播中调整后的尺寸），统一调整为224x224
+        # if h!= 224 or w!= 224:
+        #     self.lq = F.interpolate(self.lq, size=(224, 224), mode='bilinear', align_corners=False)
+        # if hasattr(self, 'gt'):
+        #     if h!= 224 or w!= 224:
+        #         self.gt = F.interpolate(self.gt, size=(224, 224), mode='bilinear', align_corners=False)
+        # # # 【新增：检查图像高度并调整】
         if h % window_size != 0:
             mod_pad_h = window_size - h % window_size
         if w % window_size != 0:
